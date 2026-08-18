@@ -99,17 +99,28 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         transactionDate,
       };
 
+      const matchedAccount = accounts.find(a => a.platform_name.toLowerCase() === selectedPlatform.toLowerCase());
+      const accountId = matchedAccount ? matchedAccount.id : undefined;
+
+      const bankAccount = accounts.find(a => a.account_type === 'BANK' || a.platform_name.toLowerCase() === 'bank');
+      const bankAccountId = bankAccount ? bankAccount.id : undefined;
+
       if (type === 'INFLOW') {
         payload.destinationPlatform = selectedPlatform;
         payload.destinationAccountName = destinationAccount || `${selectedPlatform} Account`;
+        payload.destinationAccountId = accountId;
       } else if (type === 'WITHDRAWAL') {
         payload.sourcePlatform = selectedPlatform;
         payload.sourceAccountName = destinationAccount || `${selectedPlatform} Account`;
+        payload.sourceAccountId = accountId;
         payload.destinationPlatform = 'Bank';
-        payload.destinationAccountName = 'Bank Checking';
+        payload.destinationAccountName = bankAccount ? bankAccount.account_name : 'Bank Checking';
+        payload.destinationAccountId = bankAccountId;
       } else {
         payload.sourcePlatform = selectedPlatform;
+        payload.sourceAccountId = accountId;
         payload.destinationPlatform = destinationAccount || 'Bank';
+        payload.destinationAccountId = bankAccountId;
       }
 
       await onSubmit(payload);
