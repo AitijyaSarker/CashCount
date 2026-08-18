@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --bg-base: #E4E3E0;
+    --bg-panel: #DCDAD7;
+    --bg-panel-subtle: #D4D2CE;
+    --line: #141414;
+    --ink: #141414;
+    --ink-muted: rgba(20, 20, 20, 0.6);
+    color-scheme: light;
+  }
+
+  :root.dark {
+    --bg-base: #121212;
+    --bg-panel: #1c1c1c;
+    --bg-panel-subtle: #262626;
+    --line: #383838;
+    --ink: #F3F2EE;
+    --ink-muted: rgba(243, 242, 238, 0.6);
+    color-scheme: dark;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    height: 100%;
+    width: 100%;
+    background-color: var(--bg-base);
+    color: var(--ink);
+  }
+
+  body {
+    height: 100%;
+    width: 100%;
+    background-color: var(--bg-base);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.font-serif {
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+/* Custom technical scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-panel);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
