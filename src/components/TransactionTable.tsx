@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Clock, CheckCircle2, Plus, Minus } from 'lucide-react';
+import { Trash2, Clock, CheckCircle2, Plus, Minus, Download } from 'lucide-react';
 import { Transaction, Account } from '../types';
 
 interface TransactionTableProps {
@@ -19,6 +19,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   onDeleteTransaction,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [timeFilter, setTimeFilter] = useState('ALL'); // ALL, WEEK, MONTH, HALF_YEAR, YEAR
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -33,8 +34,50 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     const matchAccount = (tx.account_name || '').toLowerCase().includes(search);
     const matchDesc = (tx.description || '').toLowerCase().includes(search);
     const matchPayer = (tx.payer_recipient || '').toLowerCase().includes(search);
-    return matchAccount || matchDesc || matchPayer;
+    
+    if (!(matchAccount || matchDesc || matchPayer)) return false;
+
+    if (timeFilter === 'ALL') return true;
+
+    const txDate = new Date(tx.transaction_date).getTime();
+    const now = new Date().getTime();
+    const daysDiff = (now - txDate) / (1000 * 3600 * 24);
+
+    if (timeFilter === 'WEEK' && daysDiff > 7) return false;
+    if (timeFilter === 'MONTH' && daysDiff > 30) return false;
+    if (timeFilter === 'HALF_YEAR' && daysDiff > 182) return false;
+    if (timeFilter === 'YEAR' && daysDiff > 365) return false;
+
+    return true;
   });
+
+  const downloadCSV = () => {
+    if (filteredTxs.length === 0) return;
+    
+    const headers = ['Date', 'Account', 'Description', 'Payer/Recipient', 'Type', 'Amount', 'Status'];
+    const rows = filteredTxs.map(tx => {
+      const amount = (tx.type === 'INFLOW' || tx.type === 'DEPOSIT') ? tx.net_amount : -tx.net_amount;
+      return [
+        new Date(tx.transaction_date).toLocaleDateString(),
+        `"${tx.account_name || ''}"`,
+        `"${tx.description || ''}"`,
+        `"${tx.payer_recipient || ''}"`,
+        tx.type,
+        amount,
+        tx.status
+      ].join(',');
+    });
+    
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `transactions_report_${timeFilter.toLowerCase()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-5 font-mono text-[#141414] dark:text-[#F3F2EE]">
@@ -59,15 +102,34 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </div>
       </div>
 
-      {/* Search Box */}
-      <div className="bg-[#DCDAD7] dark:bg-[#1C1C1C] border-2 border-[#141414] dark:border-[#383838] p-3 rounded-lg">
+      {/* Search and Filters Box */}
+      <div className="bg-[#DCDAD7] dark:bg-[#1C1C1C] border-2 border-[#141414] dark:border-[#383838] p-3 rounded-lg flex flex-col sm:flex-row gap-3">
         <input
           type="text"
           placeholder="Search by account, description, or payer..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-[#E4E3E0] dark:bg-[#262626] border border-[#141414] dark:border-[#383838] px-4 py-2 text-sm rounded text-[#141414] dark:text-[#F3F2EE] placeholder-[#141414]/50 dark:placeholder-[#F3F2EE]/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 bg-[#E4E3E0] dark:bg-[#262626] border border-[#141414] dark:border-[#383838] px-4 py-2 text-sm rounded text-[#141414] dark:text-[#F3F2EE] placeholder-[#141414]/50 dark:placeholder-[#F3F2EE]/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <select
+          value={timeFilter}
+          onChange={(e) => setTimeFilter(e.target.value)}
+          className="bg-[#E4E3E0] dark:bg-[#262626] border border-[#141414] dark:border-[#383838] px-3 py-2 text-sm rounded text-[#141414] dark:text-[#F3F2EE] font-bold focus:outline-none"
+        >
+          <option value="ALL">All Time</option>
+          <option value="WEEK">Past Week</option>
+          <option value="MONTH">Past Month</option>
+          <option value="HALF_YEAR">Past 6 Months</option>
+          <option value="YEAR">Past Year</option>
+        </select>
+        <button
+          onClick={downloadCSV}
+          disabled={filteredTxs.length === 0}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#141414] dark:bg-[#383838] hover:bg-[#2A2A2A] text-[#E4E3E0] dark:text-[#F3F2EE] border border-[#141414] dark:border-white text-sm font-bold uppercase rounded transition-colors disabled:opacity-50"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
       </div>
 
       {/* Transactions Table */}
