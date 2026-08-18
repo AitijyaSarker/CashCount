@@ -691,6 +691,9 @@ export const ExpensesController = {
       sourceExpenses = await getCollection<any>('expenses').find({ user_id: userId }).toArray();
       accountsList = await getCollection<any>('accounts').find({ user_id: userId }).toArray();
       categoriesList = await getCollection<any>('expense_categories').find({ user_id: userId }).toArray();
+      if (categoriesList.length === 0) {
+        categoriesList = Array.from(database.expenseCategories.values()).filter(c => c.user_id === userId);
+      }
     } catch (e) {
       sourceExpenses = Array.from(database.expenses.values()).filter(exp => exp.user_id === userId);
       accountsList = Array.from(database.accounts.values()).filter(a => a.user_id === userId);
@@ -826,6 +829,9 @@ export const CategoriesController = {
     let cats: ExpenseCategoryRecord[] = [];
     try {
       cats = await getCollection<ExpenseCategoryRecord>('expense_categories').find({ user_id: userId }).toArray();
+      if (cats.length === 0) {
+        cats = Array.from(database.expenseCategories.values()).filter(c => c.user_id === userId);
+      }
     } catch (e) {
       cats = Array.from(database.expenseCategories.values()).filter(c => c.user_id === userId);
     }
