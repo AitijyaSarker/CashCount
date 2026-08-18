@@ -13,7 +13,7 @@ const DEFAULT_FEATURE_CONFIG: FeatureConfig = {
   depositLabel: 'Deposit',
   withdrawLabel: 'Withdraw',
   transferLabel: 'Transfer',
-  expenseLabel: 'Expense',
+  expenseLabel: 'Withdraw',
   enableTransfer: true,
   enableExpense: true,
 };

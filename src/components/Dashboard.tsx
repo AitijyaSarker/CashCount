@@ -57,6 +57,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         } else if (tx.status === 'PENDING') {
           totalPending += tx.net_amount;
         }
+      } else if (tx.type === 'WITHDRAWAL') {
+        if (tx.status === 'CLEARED' || tx.status === 'DEPOSITED') {
+          totalExpenses += tx.gross_amount;
+        }
       }
     }
   });
@@ -87,7 +91,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Income This Month */}
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20 border-2 border-emerald-300 dark:border-emerald-700 p-5 rounded-lg shadow-sm">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 block mb-2">
-            Income (This Month)
+            Deposits (This Month)
           </span>
           <div className="text-3xl font-bold text-emerald-900 dark:text-emerald-100">
             +{formatCurrency(totalIncome)}
@@ -97,7 +101,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Expenses */}
         <div className="bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/30 dark:to-rose-800/20 border-2 border-rose-300 dark:border-rose-700 p-5 rounded-lg shadow-sm">
           <span className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300 block mb-2">
-            Expenses (This Month)
+            Withdrawals (This Month)
           </span>
           <div className="text-3xl font-bold text-rose-900 dark:text-rose-100">
             -{formatCurrency(totalExpenses)}
@@ -107,7 +111,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Pending */}
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 border-2 border-amber-300 dark:border-amber-700 p-5 rounded-lg shadow-sm">
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 block mb-2">
-            Pending Income
+            Pending Deposits
           </span>
           <div className="text-3xl font-bold text-amber-900 dark:text-amber-100">
             {formatCurrency(totalPending)}

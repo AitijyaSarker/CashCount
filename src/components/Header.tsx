@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   const navTabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'transactions', label: 'Transactions' },
-    { id: 'expenses', label: 'Expenses' },
+    { id: 'expenses', label: 'Withdrawals' },
     { id: 'reports', label: 'Reports' },
     { id: 'settings', label: 'Settings' },
   ];
@@ -82,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold uppercase border border-emerald-700 transition-colors flex-shrink-0 rounded"
             >
               <Plus className="w-4 h-4" />
-              <span>Income</span>
+              <span>Deposit</span>
             </button>
 
             {/* Add Expense */}
@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="inline-flex items-center space-x-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold uppercase border border-rose-700 transition-colors flex-shrink-0 rounded"
             >
               <Minus className="w-4 h-4" />
-              <span>Expense</span>
+              <span>Withdraw</span>
             </button>
 
             {/* Sign Out */}
