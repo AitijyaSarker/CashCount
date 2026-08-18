@@ -28,11 +28,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     }).format(val);
   };
 
-  const filteredTxs = transactions.filter(tx =>
-    tx.account_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tx.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tx.payer_recipient?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTxs = transactions.filter(tx => {
+    const search = searchTerm.toLowerCase();
+    const matchAccount = (tx.account_name || '').toLowerCase().includes(search);
+    const matchDesc = (tx.description || '').toLowerCase().includes(search);
+    const matchPayer = (tx.payer_recipient || '').toLowerCase().includes(search);
+    return matchAccount || matchDesc || matchPayer;
+  });
 
   return (
     <div className="space-y-5 font-mono text-[#141414] dark:text-[#F3F2EE]">

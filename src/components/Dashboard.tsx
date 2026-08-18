@@ -11,6 +11,7 @@ interface DashboardProps {
   onOpenAddTransaction: (type?: 'INFLOW' | 'WITHDRAWAL' | 'TRANSFER' | 'DEPOSIT', platform?: string) => void;
   onOpenAddExpense: () => void;
   onUpdateTransactionStatus: (id: string, newStatus: string) => void;
+  onDeleteTransaction: (id: string) => void;
   onNavigateTab: (tab: string) => void;
   onOpenCreatePlatform?: () => void;
 }
@@ -23,6 +24,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenAddTransaction,
   onOpenAddExpense,
   onUpdateTransactionStatus,
+  onDeleteTransaction,
   onNavigateTab,
   onOpenCreatePlatform,
 }) => {
@@ -201,6 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <th className="text-left py-3 px-3 font-bold text-[#141414] dark:text-[#F3F2EE]">Type</th>
                 <th className="text-right py-3 px-3 font-bold text-[#141414] dark:text-[#F3F2EE]">Amount</th>
                 <th className="text-center py-3 px-3 font-bold text-[#141414] dark:text-[#F3F2EE]">Status</th>
+                <th className="text-center py-3 px-3 font-bold text-[#141414] dark:text-[#F3F2EE]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -213,7 +216,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {new Date(tx.transaction_date).toLocaleDateString()}
                   </td>
                   <td className="py-3 px-3 text-[#141414]/70 dark:text-[#F3F2EE]/70 truncate">
-                    {tx.account_name}
+                    {tx.account_name || 'N/A'}
                   </td>
                   <td className="py-3 px-3">
                     <span className="inline-block text-[9px] font-bold uppercase px-2 py-0.5 bg-[#141414]/10 dark:bg-white/10 rounded text-[#141414] dark:text-[#F3F2EE]">
@@ -235,6 +238,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     }`}>
                       {tx.status}
                     </span>
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <button
+                      onClick={() => onDeleteTransaction(tx.id)}
+                      className="text-[10px] font-bold uppercase px-2 py-1 bg-rose-100 dark:bg-rose-900/40 hover:bg-rose-200 text-rose-700 dark:text-rose-300 rounded"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}

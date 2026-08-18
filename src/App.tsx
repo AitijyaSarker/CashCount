@@ -177,6 +177,7 @@ const AppContent: React.FC = () => {
             onOpenAddTransaction={handleOpenAddTx}
             onOpenAddExpense={() => setIsAddExpenseOpen(true)}
             onUpdateTransactionStatus={handleUpdateTxStatus}
+            onDeleteTransaction={handleDeleteTransaction}
             onNavigateTab={setActiveTab}
             onOpenCreatePlatform={() => setIsCreatePlatformOpen(true)}
           />
