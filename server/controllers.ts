@@ -416,9 +416,29 @@ export const AccountsController = {
         accountType,
         accountIdentifier,
         currency,
-        initialBalance,
+        initialBalance: 0,
         logoUrl: finalLogoUrl,
       });
+
+      if (Number(initialBalance) > 0) {
+        const txId = `tx_${crypto.randomBytes(6).toString('hex')}`;
+        await createTransactionAtomic({
+          id: txId,
+          user_id: userId,
+          source_account_id: null,
+          destination_account_id: row.id,
+          type: 'DEPOSIT',
+          gross_amount: Number(initialBalance),
+          fee_amount: 0,
+          net_amount: Number(initialBalance),
+          currency: currency || 'USD',
+          status: 'CLEARED',
+          transaction_date: new Date().toISOString().slice(0, 10),
+          client_name: 'Opening Balance',
+          notes: 'Initial account balance deposit',
+        });
+        row.current_balance = Number(initialBalance);
+      }
 
       await logAuditPg(userId, 'ACCOUNT_CREATED', req.ip || '', req.headers['user-agent'] || '', 'SUCCESS', `Created account ${accountName} (${platformName})`);
 
@@ -476,14 +496,24 @@ export const TransactionsController = {
     const userId = req.user!.id;
     const { platform, status, type, startDate, endDate, search, limit = 100 } = req.query;
 
-    let list: TransactionRecord[] = [];
-    for (const tx of database.transactions.values()) {
-      if (tx.user_id !== userId) continue;
+    let sourceList: TransactionRecord[] = [];
+    let accountsList: any[] = [];
+    try {
+      sourceList = await getCollection<TransactionRecord>('transactions').find({ user_id: userId }).toArray();
+      accountsList = await getCollection<any>('accounts').find({ user_id: userId }).toArray();
+    } catch (e) {
+      sourceList = Array.from(database.transactions.values()).filter(tx => tx.user_id === userId);
+      accountsList = Array.from(database.accounts.values()).filter(a => a.user_id === userId);
+    }
+    const accMap = new Map();
+    accountsList.forEach(a => accMap.set(a.id, a));
 
+    let list: TransactionRecord[] = [];
+    for (const tx of sourceList) {
       // Platform filter
       if (platform && platform !== 'ALL') {
-        const destAcc = tx.destination_account_id ? database.accounts.get(tx.destination_account_id) : null;
-        const srcAcc = tx.source_account_id ? database.accounts.get(tx.source_account_id) : null;
+        const destAcc = tx.destination_account_id ? accMap.get(tx.destination_account_id) : null;
+        const srcAcc = tx.source_account_id ? accMap.get(tx.source_account_id) : null;
         const matchDest = destAcc && destAcc.platform_name.toLowerCase() === String(platform).toLowerCase();
         const matchSrc = srcAcc && srcAcc.platform_name.toLowerCase() === String(platform).toLowerCase();
         if (!matchDest && !matchSrc) continue;
@@ -518,8 +548,8 @@ export const TransactionsController = {
 
     // Enrich with account names
     const enriched = list.slice(0, Number(limit)).map(tx => {
-      const dest = tx.destination_account_id ? database.accounts.get(tx.destination_account_id) : null;
-      const src = tx.source_account_id ? database.accounts.get(tx.source_account_id) : null;
+      const dest = tx.destination_account_id ? accMap.get(tx.destination_account_id) : null;
+      const src = tx.source_account_id ? accMap.get(tx.source_account_id) : null;
       return {
         ...tx,
         destination_account_name: dest ? dest.account_name : null,
@@ -654,16 +684,32 @@ export const ExpensesController = {
     const userId = req.user!.id;
     const { categoryId, startDate, endDate, isTaxDeductible } = req.query;
 
+    let sourceExpenses: any[] = [];
+    let accountsList: any[] = [];
+    let categoriesList: any[] = [];
+    try {
+      sourceExpenses = await getCollection<any>('expenses').find({ user_id: userId }).toArray();
+      accountsList = await getCollection<any>('accounts').find({ user_id: userId }).toArray();
+      categoriesList = await getCollection<any>('expense_categories').find({ user_id: userId }).toArray();
+    } catch (e) {
+      sourceExpenses = Array.from(database.expenses.values()).filter(exp => exp.user_id === userId);
+      accountsList = Array.from(database.accounts.values()).filter(a => a.user_id === userId);
+      categoriesList = Array.from(database.expenseCategories.values()).filter(c => c.user_id === userId);
+    }
+    const accMap = new Map();
+    accountsList.forEach(a => accMap.set(a.id, a));
+    const catMap = new Map();
+    categoriesList.forEach(c => catMap.set(c.id, c));
+
     const expenses: any[] = [];
-    for (const exp of database.expenses.values()) {
-      if (exp.user_id !== userId) continue;
+    for (const exp of sourceExpenses) {
       if (categoryId && exp.category_id !== categoryId) continue;
       if (isTaxDeductible !== undefined && String(exp.is_tax_deductible) !== String(isTaxDeductible)) continue;
       if (startDate && exp.expense_date < String(startDate)) continue;
       if (endDate && exp.expense_date > String(endDate)) continue;
 
-      const cat = exp.category_id ? database.expenseCategories.get(exp.category_id) : null;
-      const acc = exp.account_id ? database.accounts.get(exp.account_id) : null;
+      const cat = exp.category_id ? catMap.get(exp.category_id) : null;
+      const acc = exp.account_id ? accMap.get(exp.account_id) : null;
 
       expenses.push({
         ...exp,
@@ -722,18 +768,23 @@ export const ExpensesController = {
       created_at: new Date().toISOString(),
     };
 
-    database.expenses.set(expId, newExpense);
-
-    // Deduct from paying account if specified
-    if (accountId) {
-      const acc = database.accounts.get(accountId);
-      if (acc) {
-        acc.current_balance = DecimalMath.subtract(acc.current_balance, numAmount);
+    try {
+      await getCollection('expenses').insertOne(newExpense as any);
+      if (accountId) {
+        await getCollection('accounts').updateOne({ id: accountId }, { $inc: { current_balance: -numAmount } });
       }
+    } catch (e) {
+      database.expenses.set(expId, newExpense);
+      if (accountId) {
+        const acc = database.accounts.get(accountId);
+        if (acc) {
+          acc.current_balance = DecimalMath.subtract(acc.current_balance, numAmount);
+        }
+      }
+      database.createLedgerForExpense(newExpense);
     }
 
-    // Ledger record
-    database.createLedgerForExpense(newExpense);
+
     database.logAudit(userId, 'EXPENSE_CREATED', req.ip || '', req.headers['user-agent'] || '', 'SUCCESS', `Logged expense $${numAmount} at ${vendor}`);
 
     return res.status(201).json(newExpense);
@@ -748,15 +799,20 @@ export const ExpensesController = {
       return res.status(404).json({ error: 'Expense not found.' });
     }
 
-    // Restore balance if account was used
-    if (exp.account_id) {
-      const acc = database.accounts.get(exp.account_id);
-      if (acc) {
-        acc.current_balance = DecimalMath.add(acc.current_balance, exp.amount);
+    try {
+      await getCollection('expenses').deleteOne({ id });
+      if (exp.account_id) {
+        await getCollection('accounts').updateOne({ id: exp.account_id }, { $inc: { current_balance: exp.amount } });
       }
+    } catch (e) {
+      if (exp.account_id) {
+        const acc = database.accounts.get(exp.account_id);
+        if (acc) {
+          acc.current_balance = DecimalMath.add(acc.current_balance, exp.amount);
+        }
+      }
+      database.expenses.delete(id);
     }
-
-    database.expenses.delete(id);
     return res.json({ success: true, message: 'Expense deleted.' });
   },
 };
@@ -767,9 +823,11 @@ export const ExpensesController = {
 export const CategoriesController = {
   async list(req: AuthenticatedRequest, res: Response) {
     const userId = req.user!.id;
-    const cats: ExpenseCategoryRecord[] = [];
-    for (const c of database.expenseCategories.values()) {
-      if (c.user_id === userId) cats.push(c);
+    let cats: ExpenseCategoryRecord[] = [];
+    try {
+      cats = await getCollection<ExpenseCategoryRecord>('expense_categories').find({ user_id: userId }).toArray();
+    } catch (e) {
+      cats = Array.from(database.expenseCategories.values()).filter(c => c.user_id === userId);
     }
     return res.json(cats);
   },
@@ -794,7 +852,11 @@ export const CategoriesController = {
       created_at: new Date().toISOString(),
     };
 
-    database.expenseCategories.set(catId, newCat);
+    try {
+      await getCollection('expense_categories').insertOne(newCat as any);
+    } catch (e) {
+      database.expenseCategories.set(catId, newCat);
+    }
     return res.status(201).json(newCat);
   },
 };
@@ -806,11 +868,26 @@ export const ReportsController = {
   async getDashboardSummary(req: AuthenticatedRequest, res: Response) {
     const userId = req.user!.id;
 
+    let sourceAccounts: any[] = [];
+    let sourceTransactions: any[] = [];
+    let sourceExpenses: any[] = [];
+    try {
+      sourceAccounts = await getCollection('accounts').find({ user_id: userId }).toArray();
+      sourceTransactions = await getCollection('transactions').find({ user_id: userId }).toArray();
+      sourceExpenses = await getCollection('expenses').find({ user_id: userId }).toArray();
+    } catch (e) {
+      sourceAccounts = Array.from(database.accounts.values()).filter(a => a.user_id === userId);
+      sourceTransactions = Array.from(database.transactions.values()).filter(t => t.user_id === userId);
+      sourceExpenses = Array.from(database.expenses.values()).filter(e => e.user_id === userId);
+    }
+
     // 1. Account Balances by Rail
     let totalLiquidCash = 0;
     const railBalances: Record<string, { balance: number; name: string; type: string; id: string }> = {};
+    const accMap = new Map();
 
-    for (const acc of database.accounts.values()) {
+    for (const acc of sourceAccounts) {
+      accMap.set(acc.id, acc);
       if (acc.user_id !== userId || !acc.is_active) continue;
       totalLiquidCash = DecimalMath.add(totalLiquidCash, acc.current_balance);
       railBalances[acc.platform_name] = {
@@ -832,7 +909,7 @@ export const ReportsController = {
     let grossRevenueTotal = 0;
     let totalFeesPaid = 0;
 
-    for (const tx of database.transactions.values()) {
+    for (const tx of sourceTransactions) {
       if (tx.user_id !== userId) continue;
 
       if (tx.type === 'INFLOW') {
@@ -842,7 +919,7 @@ export const ReportsController = {
         if (tx.status === 'PENDING') {
           pendingInflowsTotal = DecimalMath.add(pendingInflowsTotal, tx.net_amount);
           pendingCount += 1;
-          const dest = tx.destination_account_id ? database.accounts.get(tx.destination_account_id) : null;
+          const dest = tx.destination_account_id ? accMap.get(tx.destination_account_id) : null;
           pendingTransactions.push({
             ...tx,
             platform_name: dest ? dest.platform_name : 'Unknown',
@@ -858,7 +935,7 @@ export const ReportsController = {
     // 4. Expenses Total
     let totalExpenses = 0;
     let deductibleExpenses = 0;
-    for (const exp of database.expenses.values()) {
+    for (const exp of sourceExpenses) {
       if (exp.user_id !== userId) continue;
       totalExpenses = DecimalMath.add(totalExpenses, exp.amount);
       if (exp.is_tax_deductible) {
