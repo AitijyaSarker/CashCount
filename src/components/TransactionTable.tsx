@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Trash2, Clock, CheckCircle2, Plus, Minus, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Trash2, Clock, CheckCircle2, Plus, Minus, Download, FileText } from 'lucide-react';
 import { Transaction, Account } from '../types';
 
 interface TransactionTableProps {
@@ -79,6 +81,47 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     document.body.removeChild(link);
   };
 
+  const downloadPDF = () => {
+    if (filteredTxs.length === 0) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Transactions Report', 14, 22);
+    
+    let subtitle = 'All Time';
+    if (timeFilter === 'WEEK') subtitle = 'Past Week';
+    if (timeFilter === 'MONTH') subtitle = 'Past Month';
+    if (timeFilter === 'HALF_YEAR') subtitle = 'Past 6 Months';
+    if (timeFilter === 'YEAR') subtitle = 'Past Year';
+    
+    doc.setFontSize(11);
+    doc.text(`Time Period: ${subtitle} | Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    
+    const tableColumn = ["Date", "Account", "Description", "Type", "Amount", "Status"];
+    const tableRows = filteredTxs.map(tx => {
+      const amount = (tx.type === 'INFLOW' || tx.type === 'DEPOSIT') ? `+${formatCurrency(tx.net_amount)}` : `-${formatCurrency(tx.net_amount)}`;
+      return [
+        new Date(tx.transaction_date).toLocaleDateString(),
+        tx.account_name || 'N/A',
+        tx.description || 'N/A',
+        tx.type,
+        amount,
+        tx.status
+      ];
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 35,
+      theme: 'grid',
+      styles: { fontSize: 8, font: 'helvetica' },
+      headStyles: { fillColor: [20, 20, 20] }
+    });
+    
+    doc.save(`transactions_report_${timeFilter.toLowerCase()}.pdf`);
+  };
+
   return (
     <div className="space-y-5 font-mono text-[#141414] dark:text-[#F3F2EE]">
       {/* Header */}
@@ -128,7 +171,15 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
           className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#141414] dark:bg-[#383838] hover:bg-[#2A2A2A] text-[#E4E3E0] dark:text-[#F3F2EE] border border-[#141414] dark:border-white text-sm font-bold uppercase rounded transition-colors disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
-          Export CSV
+          CSV
+        </button>
+        <button
+          onClick={downloadPDF}
+          disabled={filteredTxs.length === 0}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#141414] dark:bg-[#383838] hover:bg-[#2A2A2A] text-[#E4E3E0] dark:text-[#F3F2EE] border border-[#141414] dark:border-white text-sm font-bold uppercase rounded transition-colors disabled:opacity-50"
+        >
+          <FileText className="w-4 h-4" />
+          PDF
         </button>
       </div>
 
