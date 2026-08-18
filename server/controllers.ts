@@ -39,7 +39,7 @@ export const AuthController = {
         full_name: fullName || 'Freelance Professional',
         business_name: businessName || 'Aitijya Sarker',
         tax_id: taxId ? FieldCrypto.encrypt(taxId) : '',
-        mfa_secret: null,
+        mfa_secret: '',
         mfa_enabled: false,
         recovery_codes: [],
         created_at: new Date().toISOString(),

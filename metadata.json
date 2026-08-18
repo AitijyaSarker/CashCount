@@ -1,6 +1,0 @@
-{
-  "name": "Freelancer Financial & Tax Accounting System",
-  "description": "Minimal finance and payment tracker. Track deposits and withdrawals across Stripe, Dots, Bank, Payoneer, and bKash with exact logos, customizable platform management, editable feature labels, note tracking, light/dark mode, and CSV/PDF financial statements.",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
-}

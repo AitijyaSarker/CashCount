@@ -16,11 +16,11 @@ export const AuthModal: React.FC = () => {
   const { login, verifyMfaLogin, register, demoLogin, error, clearError } = useAuth();
 
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER' | 'MFA_CHALLENGE'>('LOGIN');
-  const [email, setEmail] = useState('alex.morgan@freelancestudio.io');
-  const [password, setPassword] = useState('Freelancer2026!');
-  const [fullName, setFullName] = useState('Alex Morgan');
-  const [businessName, setBusinessName] = useState('Aitijya Sarker');
-  const [taxId, setTaxId] = useState('XX-XXX4912');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [taxId, setTaxId] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
